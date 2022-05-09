@@ -1,7 +1,6 @@
 package com.intuit.businessprofile.base.entity;
 
 import java.io.Serializable;
-import java.util.UUID;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
@@ -9,9 +8,11 @@ import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Embeddable
 public class ProductSubscriptionCompositeKey implements Serializable {
 
@@ -20,5 +21,6 @@ public class ProductSubscriptionCompositeKey implements Serializable {
     private ProfileEntity profile;
 
     @Column(name = "PRODUCT_ID", nullable = false, updatable = false)
-    private UUID productId;
+    private String productId;
+
 }

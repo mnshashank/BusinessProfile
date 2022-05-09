@@ -16,35 +16,37 @@ import org.hibernate.annotations.Type;
 
 import com.intuit.businessprofile.base.constant.AddressType;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "T_ADDRESS")
 public class AddressEntity {
 
     @Id
     @Type(type = "uuid-char")
-    @Column(name = "ADDRESS_ID", nullable = false, updatable = false)
+    @Column(name = "ID", nullable = false, updatable = false)
     private UUID id;
 
     @Column(name = "LINE_1", nullable = false)
     private String line1;
 
     @Column(name = "LINE_2")
-    private UUID line2;
+    private String line2;
 
     @Column(name = "CITY", nullable = false)
-    private UUID city;
+    private String city;
 
     @Column(name = "STATE", nullable = false)
-    private UUID state;
+    private String state;
 
     @Column(name = "ZIP", nullable = false)
-    private UUID zip;
+    private String zip;
 
     @Column(name = "COUNTRY", nullable = false)
-    private UUID country;
+    private String country;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "ADDRESS_TYPE", nullable = false, updatable = false)
@@ -53,4 +55,5 @@ public class AddressEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PROFILE_ID", referencedColumnName = "ID", nullable = false)
     private ProfileEntity profile;
+
 }

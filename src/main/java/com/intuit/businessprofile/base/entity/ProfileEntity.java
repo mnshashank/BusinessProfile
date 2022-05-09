@@ -7,7 +7,6 @@ import java.util.UUID;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
@@ -15,9 +14,11 @@ import javax.persistence.Table;
 
 import org.hibernate.annotations.Type;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "T_PROFILE")
 public class ProfileEntity {
@@ -39,10 +40,12 @@ public class ProfileEntity {
     @Column(name = "WEBSITE", nullable = false)
     private String website;
 
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "profile")
+    @OneToOne(cascade = CascadeType.ALL, mappedBy = "profile")
     private TaxIdentifierEntity taxIdentifier;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "profile")
     private List<AddressEntity> addresses = new ArrayList<>();
 
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "productSubscriptionCompositeKey.profile")
+    private List<ProductSubscriptionEntity> productSubscriptions = new ArrayList<>();
 }

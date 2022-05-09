@@ -12,16 +12,18 @@ import javax.persistence.Table;
 
 import org.hibernate.annotations.Type;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "T_TAX_IDENTIFIER")
 public class TaxIdentifierEntity {
 
     @Id
     @Type(type = "uuid-char")
-    @Column(name = "TAX_IDENTIFIER_ID", nullable = false, updatable = false)
+    @Column(name = "ID", nullable = false, updatable = false)
     private UUID id;
 
     @Column(name = "PAN", nullable = false)
@@ -30,7 +32,8 @@ public class TaxIdentifierEntity {
     @Column(name = "EIN", nullable = false)
     private String ein;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PROFILE_ID", referencedColumnName = "ID", nullable = false)
     private ProfileEntity profile;
+    
 }
