@@ -24,7 +24,7 @@ public class ProfileEntity {
 
     @Id
     @Type(type = "uuid-char")
-    @Column(name = "PROFILE_ID", nullable = false, updatable = false)
+    @Column(name = "ID", nullable = false, updatable = false)
     private UUID id;
 
     @Column(name = "COMPANY_NAME", nullable = false)

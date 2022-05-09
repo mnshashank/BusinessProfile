@@ -1,5 +1,6 @@
 package com.intuit.businessprofile.base.entity;
 
+import java.io.Serializable;
 import java.util.UUID;
 
 import javax.persistence.Column;
@@ -12,7 +13,7 @@ import lombok.Data;
 
 @Data
 @Embeddable
-public class ProductSubscriptionCompositeKey {
+public class ProductSubscriptionCompositeKey implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PROFILE_ID", referencedColumnName = "ID", nullable = false)
