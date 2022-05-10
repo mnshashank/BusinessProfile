@@ -14,6 +14,8 @@ import javax.persistence.Table;
 
 import org.hibernate.annotations.Type;
 
+import com.intuit.businessprofile.base.pojo.Profile;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -48,4 +50,24 @@ public class ProfileEntity {
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "productSubscriptionCompositeKey.profile")
     private List<ProductSubscriptionEntity> productSubscriptions = new ArrayList<>();
+
+    public static ProfileEntity fromProfile(Profile profile) {
+        return fromProfileAndProfileId(profile, UUID.randomUUID());
+    }
+
+    public static ProfileEntity fromProfileAndProfileId(Profile profile, UUID profileId) {
+        ProfileEntity profileEntity = new ProfileEntity();
+
+        profileEntity.setId(profileId);
+        profileEntity.setCompanyName(profile.getCompanyName());
+        profileEntity.setCompanyLegalName(profile.getCompanyLegalName());
+        profileEntity.setEmail(profile.getEmail());
+        profileEntity.setWebsite(profile.getWebsite());
+
+        profileEntity.setAddresses(AddressEntity.fromProfileAndProfileEntity(profile, profileEntity));
+        profileEntity.setProductSubscriptions(ProductSubscriptionEntity.fromProfileAndProfileEntity(profile, profileEntity));
+        profileEntity.setTaxIdentifier(TaxIdentifierEntity.fromProfileAndProfileEntity(profile, profileEntity));
+
+        return profileEntity;
+    }
 }

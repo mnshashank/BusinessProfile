@@ -3,6 +3,7 @@ package com.intuit.businessprofile.service;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +14,7 @@ import com.intuit.businessprofile.base.entity.AddressEntity;
 import com.intuit.businessprofile.base.entity.ProductSubscriptionEntity;
 import com.intuit.businessprofile.base.entity.ProfileEntity;
 import com.intuit.businessprofile.base.entity.TaxIdentifierEntity;
+import com.intuit.businessprofile.base.pojo.Profile;
 import com.intuit.businessprofile.base.repository.ProfileRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -29,7 +31,11 @@ public class BusinessProfileService {
 
     private final ObjectMapper mapper;
 
+    private final TaskExecutor taskExecutor;
+
     public String getBusinessProfile(UUID profileId) {
+        log.info("Getting profile information for profileId: {}", profileId);
+
         // check if the business profile information is in redis cache with profileId as the key.
         Optional<String> profileOptional = jedisTemplate.getIfExists(profileId.toString());
         if (profileOptional.isPresent()) {
@@ -87,8 +93,8 @@ public class BusinessProfileService {
         taxIdentifiersNode.put("pan", taxIdentifierEntity.getPan());
         taxIdentifiersNode.put("ein", taxIdentifierEntity.getEin());
 
-        profileNode.put("businessAddress", businessAddresses);
-        profileNode.put("legalAddress", legalAddresses);
+        profileNode.put("businessAddresses", businessAddresses);
+        profileNode.put("legalAddresses", legalAddresses);
         profileNode.put("taxIdentifiers", taxIdentifiersNode);
         profileNode.put("productSubscriptions", subscriptions);
 
@@ -99,6 +105,32 @@ public class BusinessProfileService {
 
         // return the profile data
         return profileData;
+    }
+
+    public void deleteProfile(UUID profileId) {
+        log.info("Deleting profile information for profileId: {}", profileId);
+        profileRepo.deleteById(profileId);
+
+        // delete all jobs for a profileID
+    }
+
+    public UUID createProfile(Profile profile) {
+        log.info("Creating new profile");
+
+        // TODO: check if validation is needed whiel creating a new profile (eg: check company legal name)
+
+        // create a job in T_JOB table
+        UUID profileId = UUID.randomUUID();
+
+        // create a new thread for processing in background
+        taskExecutor.execute(() -> {
+            // call all subscribed products for validation (pick the subscribed products from payload)
+
+            // save the profile entity
+            profileRepo.save(ProfileEntity.fromProfileAndProfileId(profile, profileId));
+        });
+
+        return profileId;
     }
 
 }

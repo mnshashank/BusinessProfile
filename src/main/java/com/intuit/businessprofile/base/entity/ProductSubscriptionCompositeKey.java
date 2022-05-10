@@ -8,6 +8,8 @@ import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 
+import com.intuit.businessprofile.base.pojo.ProductSubscription;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,5 +24,14 @@ public class ProductSubscriptionCompositeKey implements Serializable {
 
     @Column(name = "PRODUCT_ID", nullable = false, updatable = false)
     private String productId;
+
+    public static ProductSubscriptionCompositeKey fromSubscriptionAndProfileEntity(ProductSubscription subscription, ProfileEntity profileEntity) {
+        ProductSubscriptionCompositeKey compositeKey = new ProductSubscriptionCompositeKey();
+
+        compositeKey.setProductId(subscription.getProductId());
+        compositeKey.setProfile(profileEntity);
+
+        return compositeKey;
+    }
 
 }
