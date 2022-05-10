@@ -28,7 +28,7 @@ public class JobEntity {
 
     @Id
     @Type(type = "uuid-char")
-    @Column(name = "JOB_ID", nullable = false, updatable = false)
+    @Column(name = "ID", nullable = false, updatable = false)
     private UUID id;
 
     @CreationTimestamp
@@ -38,7 +38,7 @@ public class JobEntity {
 
     @UpdateTimestamp
     @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "UPDATED_AT", nullable = false)
+    @Column(name = "UPDATED_AT")
     private Calendar updatedAt;
 
     @Column(name = "CORRELATION_ID", nullable = false, updatable = false)
@@ -53,6 +53,20 @@ public class JobEntity {
     @Column(name = "PAYLOAD", nullable = false, updatable = false)
     private String payload;
 
-    // TODO: check what has to be done for profile_id during create scenarios
+    @Column(name = "PROFILE_ID", nullable = false, updatable = false)
+    private String profileId;
 
+    @Column(name = "ERROR")
+    private String error;
+
+    public static JobEntity getInstanceFromProfileId(UUID profileId) {
+        JobEntity jobEntity = new JobEntity();
+
+        jobEntity.setId(UUID.randomUUID());
+        jobEntity.setCorrelationId(UUID.randomUUID());
+        jobEntity.setProfileId(profileId.toString());
+        jobEntity.setStatus(JobStatus.ACCEPTED);
+
+        return jobEntity;
+    }
 }

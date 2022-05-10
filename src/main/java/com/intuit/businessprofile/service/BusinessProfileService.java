@@ -9,16 +9,20 @@ import javax.transaction.Transactional;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.intuit.businessprofile.base.constant.AddressType;
+import com.intuit.businessprofile.base.constant.JobStatus;
 import com.intuit.businessprofile.base.entity.AddressEntity;
+import com.intuit.businessprofile.base.entity.JobEntity;
 import com.intuit.businessprofile.base.entity.ProductSubscriptionEntity;
 import com.intuit.businessprofile.base.entity.ProfileEntity;
 import com.intuit.businessprofile.base.entity.TaxIdentifierEntity;
 import com.intuit.businessprofile.base.pojo.Profile;
 import com.intuit.businessprofile.base.pojo.WebRequest;
+import com.intuit.businessprofile.base.repository.JobRepository;
 import com.intuit.businessprofile.base.repository.ProfileRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -32,6 +36,8 @@ public class BusinessProfileService {
     private final JedisTemplate jedisTemplate;
 
     private final ProfileRepository profileRepo;
+
+    private final JobRepository jobRepo;
 
     private final ObjectMapper mapper;
 
@@ -67,7 +73,7 @@ public class BusinessProfileService {
         ArrayNode legalAddresses = mapper.createArrayNode();
         for (AddressEntity address : profile.getAddresses()) {
             ObjectNode addressNode = mapper.createObjectNode();
-            addressNode.put("addressId", address.getId()
+            addressNode.put("id", address.getId()
                     .toString());
             addressNode.put("line1", address.getLine1());
             addressNode.put("line2", address.getLine2());
@@ -96,15 +102,15 @@ public class BusinessProfileService {
 
         ObjectNode taxIdentifiersNode = mapper.createObjectNode();
         TaxIdentifierEntity taxIdentifierEntity = profile.getTaxIdentifier();
-        taxIdentifiersNode.put("taxIdentifierId", taxIdentifierEntity.getId()
+        taxIdentifiersNode.put("id", taxIdentifierEntity.getId()
                 .toString());
         taxIdentifiersNode.put("pan", taxIdentifierEntity.getPan());
         taxIdentifiersNode.put("ein", taxIdentifierEntity.getEin());
 
-        profileNode.put("businessAddresses", businessAddresses);
-        profileNode.put("legalAddresses", legalAddresses);
-        profileNode.put("taxIdentifiers", taxIdentifiersNode);
-        profileNode.put("productSubscriptions", subscriptions);
+        profileNode.set("businessAddresses", businessAddresses);
+        profileNode.set("legalAddresses", legalAddresses);
+        profileNode.set("taxIdentifiers", taxIdentifiersNode);
+        profileNode.set("productSubscriptions", subscriptions);
 
         String profileData = profileNode.toString();
 
@@ -126,55 +132,79 @@ public class BusinessProfileService {
     }
 
     public UUID createProfile(Profile profile) {
-        UUID profileId = UUID.randomUUID();
+        try {
+            UUID profileId = UUID.randomUUID();
 
-        log.info("Creating new profile with profileID: {}", profileId);
+            log.info("Creating new profile with profileID: {}", profileId);
 
-        // TODO: check if validation is needed while creating a new profile (eg: check company legal name)
+            // TODO: check if validation is needed while creating a new profile (eg: check company legal name)
 
-        // create a job in T_JOB table
+            // create a job in T_JOB table
+            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId);
+            jobEntity.setPayload(mapper.writeValueAsString(profile));
+            jobRepo.save(jobEntity);
 
-        // create a new thread for processing in background
-        taskExecutor.execute(() -> {
-            // call all subscribed products for validation (pick the subscribed products from input payload)
-            List<WebRequest> validationRequests = webRequestPreparationService.getCreateProfileValidationWebRequests(profile.getProductSubscriptions(), profile);
+            // create a new thread for processing in background
+            taskExecutor.execute(() -> {
+                // call all subscribed products for validation (pick the subscribed products from input payload)
+                List<WebRequest> validationRequests = webRequestPreparationService.getCreateProfileValidationWebRequests(profile.getProductSubscriptions(), profile);
 
-            productsValidationService.validateWithProducts(validationRequests);
+                productsValidationService.validateWithProducts(validationRequests);
 
-            // invalidate the redis cache
-            jedisTemplate.del(profileId.toString());
+                // invalidate the redis cache
+                jedisTemplate.del(profileId.toString());
 
-            // save the profile entity
-            profileRepo.save(ProfileEntity.fromProfileAndProfileId(profile, profileId));
-        });
+                // save the profile entity
+                profileRepo.save(ProfileEntity.fromProfileAndProfileId(profile, profileId));
 
-        return profileId;
+                //update job table with the new status
+                jobRepo.updateJobStatus(JobStatus.SUCCESS, profileId.toString());
+            });
+
+            return profileId;
+        } catch (JsonProcessingException jsonProcessingException) {
+            // TODO : throw exception
+            throw new RuntimeException();
+        }
+
     }
 
     @Transactional
     public void updateProfile(Profile profile, UUID profileId) {
         log.info("Updating profile with profileID: {}", profileId);
 
-        // check and fetch the profile from database
-        // TODO: have app level runtime exception classes and use it here.
-        ProfileEntity profileEntity = profileRepo.findById(profileId)
-                .orElseThrow(RuntimeException::new);
+        // TODO: check if there is already an on-going job for the profile
+        try {
+            // check and fetch the profile from database
+            // TODO: have app level runtime exception classes and use it here.
+            ProfileEntity profileEntity = profileRepo.findById(profileId)
+                    .orElseThrow(RuntimeException::new);
 
-        // create a job for update in T_Job table
+            // create a job for update in T_Job table
+            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId);
+            jobEntity.setPayload(mapper.writeValueAsString(profile));
+            jobRepo.save(jobEntity);
 
-        // create a background thread for processing
-        taskExecutor.execute(() -> {
-            // call all subscribed products for validation (pick the subscribed products from database)
+            // create a background thread for processing
+            taskExecutor.execute(() -> {
+                // call all subscribed products for validation (pick the subscribed products from database)
 
-            // update the profile entity
-            ProfileEntity.updateProfile(profileEntity, profile);
+                // update the profile entity
+                ProfileEntity.updateProfile(profileEntity, profile);
 
-            // invalidate the redis cache
-            jedisTemplate.del(profileId.toString());
+                // invalidate the redis cache
+                jedisTemplate.del(profileId.toString());
 
-            // save the updated profile entity
-            profileRepo.save(profileEntity);
-        });
+                // save the updated profile entity
+                profileRepo.save(profileEntity);
+
+                //update job table with the new status
+                jobRepo.updateJobStatus(JobStatus.SUCCESS, profileId.toString());
+            });
+        } catch (JsonProcessingException jsonProcessingException) {
+            // TODO : throw exception
+            throw new RuntimeException();
+        }
     }
 
 }
