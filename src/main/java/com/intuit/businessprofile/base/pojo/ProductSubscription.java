@@ -8,6 +8,8 @@ import lombok.Data;
 @Data
 public class ProductSubscription {
 
+    private String id;
+
     @NotEmpty
     @Size(max = 10)
     private String productId;

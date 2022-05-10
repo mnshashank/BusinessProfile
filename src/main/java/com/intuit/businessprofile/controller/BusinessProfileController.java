@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -48,5 +49,12 @@ public class BusinessProfileController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public ProfileResponse createProfile(@RequestBody @Valid Profile profile) {
         return new ProfileResponse(businessProfileService.createProfile(profile), JobStatus.ACCEPTED);
+    }
+
+    @PutMapping(value = "/{profileId}")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public ProfileResponse updateProfile(@RequestBody @Valid Profile profile, @PathVariable(name = "profileId") UUID profileId) {
+        businessProfileService.updateProfile(profile, profileId);
+        return new ProfileResponse(profileId, JobStatus.ACCEPTED);
     }
 }

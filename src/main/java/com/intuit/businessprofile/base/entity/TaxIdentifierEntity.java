@@ -50,4 +50,13 @@ public class TaxIdentifierEntity {
 
         return taxIdentifierEntity;
     }
+
+    public static void updateTaxIdentifier(ProfileEntity profileEntity, Profile profile) {
+        TaxIdentifierEntity taxIdentifierEntity = profileEntity.getTaxIdentifier();
+        
+        taxIdentifierEntity.setPan(profile.getTaxIdentifiers()
+                .getPan());
+        taxIdentifierEntity.setEin(profile.getTaxIdentifiers()
+                .getEin());
+    }
 }

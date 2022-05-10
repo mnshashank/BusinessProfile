@@ -1,5 +1,7 @@
 package com.intuit.businessprofile.base.pojo;
 
+import java.util.UUID;
+
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.Size;
 
@@ -10,6 +12,8 @@ import lombok.Data;
 @Data
 public class Address {
 
+    private UUID id;
+    
     @NotEmpty
     @Size(max = 255)
     private String line1;

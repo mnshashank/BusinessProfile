@@ -3,6 +3,8 @@ package com.intuit.businessprofile.service;
 import java.util.Optional;
 import java.util.UUID;
 
+import javax.transaction.Transactional;
+
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 
@@ -111,26 +113,59 @@ public class BusinessProfileService {
         log.info("Deleting profile information for profileId: {}", profileId);
         profileRepo.deleteById(profileId);
 
+        // delete the mapping from redis cache
+        jedisTemplate.del(profileId.toString());
+
         // delete all jobs for a profileID
     }
 
     public UUID createProfile(Profile profile) {
-        log.info("Creating new profile");
+        UUID profileId = UUID.randomUUID();
 
-        // TODO: check if validation is needed whiel creating a new profile (eg: check company legal name)
+        log.info("Creating new profile with profileID: {}", profileId);
+
+        // TODO: check if validation is needed while creating a new profile (eg: check company legal name)
 
         // create a job in T_JOB table
-        UUID profileId = UUID.randomUUID();
 
         // create a new thread for processing in background
         taskExecutor.execute(() -> {
             // call all subscribed products for validation (pick the subscribed products from payload)
+
+            // invalidate the redis cache
+            jedisTemplate.del(profileId.toString());
 
             // save the profile entity
             profileRepo.save(ProfileEntity.fromProfileAndProfileId(profile, profileId));
         });
 
         return profileId;
+    }
+
+    @Transactional
+    public void updateProfile(Profile profile, UUID profileId) {
+        log.info("Updating profile with profileID: {}", profileId);
+
+        // check and fetch the profile from database
+        // TODO: have app level runtime exception classes and use it here.
+        ProfileEntity profileEntity = profileRepo.findById(profileId)
+                .orElseThrow(RuntimeException::new);
+
+        // create a job for update in T_Job table
+
+        // create a background thread for processing
+        taskExecutor.execute(() -> {
+            // call all subscribed products for validation (pick the subscribed products from database)
+
+            // update the profile entity
+            ProfileEntity.updateProfile(profileEntity, profile);
+
+            // invalidate the redis cache
+            jedisTemplate.del(profileId.toString());
+
+            // save the updated profile entity
+            profileRepo.save(profileEntity);
+        });
     }
 
 }

@@ -40,6 +40,5 @@ public class Profile {
     @Valid
     private TaxIdentifiers taxIdentifiers;
 
-    @NotEmpty
     private List<@Valid ProductSubscription> productSubscriptions;
 }

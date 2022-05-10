@@ -70,4 +70,18 @@ public class ProfileEntity {
 
         return profileEntity;
     }
+
+    public static void updateProfile(ProfileEntity profileEntity, Profile profile) {
+        // update base members of profile
+        profileEntity.setCompanyName(profile.getCompanyName());
+        profileEntity.setCompanyLegalName(profile.getCompanyLegalName());
+        profileEntity.setEmail(profile.getEmail());
+        profileEntity.setWebsite(profile.getWebsite());
+
+        // update addresses
+        AddressEntity.updateAddress(profileEntity, profile);
+
+        // update tax identifiers
+        TaxIdentifierEntity.updateTaxIdentifier(profileEntity, profile);
+    }
 }

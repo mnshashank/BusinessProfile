@@ -1,6 +1,7 @@
 package com.intuit.businessprofile.base.entity;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
@@ -93,5 +94,27 @@ public class AddressEntity {
         }
 
         return addressEntities;
+    }
+
+    public static void updateAddress(ProfileEntity profileEntity, Profile profile) {
+        List<Address> addressList = new LinkedList<>();
+        addressList.addAll(profile.getBusinessAddresses());
+        addressList.addAll(profile.getLegalAddresses());
+
+        for (AddressEntity addressEntity : profileEntity.getAddresses()) {
+            // TODO: throw created custom application exception
+            Address address = addressList.stream()
+                    .filter(addr -> addr.getId()
+                            .equals(addressEntity.getId()))
+                    .findFirst()
+                    .orElseThrow(RuntimeException::new);
+
+            addressEntity.setLine1(address.getLine1());
+            addressEntity.setLine2(address.getLine2());
+            addressEntity.setCity(address.getCity());
+            addressEntity.setState(address.getState());
+            addressEntity.setZip(address.getZip());
+            addressEntity.setCountry(address.getCountry());
+        }
     }
 }
