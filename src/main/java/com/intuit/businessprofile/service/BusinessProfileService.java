@@ -1,5 +1,6 @@
 package com.intuit.businessprofile.service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +18,7 @@ import com.intuit.businessprofile.base.entity.ProductSubscriptionEntity;
 import com.intuit.businessprofile.base.entity.ProfileEntity;
 import com.intuit.businessprofile.base.entity.TaxIdentifierEntity;
 import com.intuit.businessprofile.base.pojo.Profile;
+import com.intuit.businessprofile.base.pojo.WebRequest;
 import com.intuit.businessprofile.base.repository.ProfileRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,10 @@ public class BusinessProfileService {
     private final ObjectMapper mapper;
 
     private final TaskExecutor taskExecutor;
+
+    private final WebRequestPreparationService webRequestPreparationService;
+
+    private final ProductsValidationService productsValidationService;
 
     public String getBusinessProfile(UUID profileId) {
         log.info("Getting profile information for profileId: {}", profileId);
@@ -130,7 +136,10 @@ public class BusinessProfileService {
 
         // create a new thread for processing in background
         taskExecutor.execute(() -> {
-            // call all subscribed products for validation (pick the subscribed products from payload)
+            // call all subscribed products for validation (pick the subscribed products from input payload)
+            List<WebRequest> validationRequests = webRequestPreparationService.getCreateProfileValidationWebRequests(profile.getProductSubscriptions(), profile);
+
+            productsValidationService.validateWithProducts(validationRequests);
 
             // invalidate the redis cache
             jedisTemplate.del(profileId.toString());
