@@ -20,4 +20,8 @@ public interface JobRepository extends CrudRepository<JobEntity, UUID> {
     @Query("update JobEntity j set j.status = :status where j.profileId = :profileId AND j.status = 'ACCEPTED'")
     void updateJobStatus(JobStatus status, String profileId);
 
+    @Transactional
+    @Modifying
+    @Query("delete from JobEntity j where j.profileId = :profileId")
+    void deleteAllJobsForProfile(String profileId);
 }

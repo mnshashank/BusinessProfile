@@ -56,8 +56,8 @@ public class WebRequestPreparationService {
         if (ALL_PRODUCTS.containsKey(productId)) {
             return WebRequest.builder()
                     .url(ALL_PRODUCTS.get(productId))
-                    .httpMethod(HttpMethod.POST)
-                    .requestBody(objectMapper.writeValueAsString(profile))
+                    .httpMethod(HttpMethod.PUT)
+                    .requestBody(profile)
                     .build();
         } else {
             // TODO: error saying configuration is not done properly for the service

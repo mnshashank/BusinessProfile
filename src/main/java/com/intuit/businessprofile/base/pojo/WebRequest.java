@@ -16,5 +16,5 @@ public class WebRequest {
 
     private HttpHeaders headers;
 
-    private String requestBody;
+    private Profile requestBody;
 }

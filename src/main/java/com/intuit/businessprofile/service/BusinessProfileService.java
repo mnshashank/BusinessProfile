@@ -129,6 +129,7 @@ public class BusinessProfileService {
         jedisTemplate.del(profileId.toString());
 
         // delete all jobs for a profileID
+        jobRepo.deleteAllJobsForProfile(profileId.toString());
     }
 
     public UUID createProfile(Profile profile) {
