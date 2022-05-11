@@ -24,4 +24,18 @@ public class GlobalExceptionHandler {
                 .body(businessProfileBadRequestException.getMessage());
     }
 
+    @ExceptionHandler(BusinessProfileNotAcceptableException.class)
+    @ResponseStatus(HttpStatus.NOT_ACCEPTABLE)
+    public ResponseEntity<Object> handleNotAcceptableException(BusinessProfileNotAcceptableException businessProfileNotAcceptableException, WebRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)
+                .body(businessProfileNotAcceptableException.getMessage());
+    }
+
+    @ExceptionHandler(BusinessProfileRuntimeException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ResponseEntity<Object> handleRuntimeException(BusinessProfileRuntimeException businessProfileRuntimeException, WebRequest request) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(businessProfileRuntimeException.getMessage());
+    }
+
 }
