@@ -3,8 +3,11 @@ package com.intuit.businessprofile.service;
 import static com.intuit.businessprofile.base.constant.BusinessProfileConstants.PRODUCTS_BASE_URL;
 import static com.intuit.businessprofile.base.constant.BusinessProfileConstants.PRODUCTS_VALIDATION_URL;
 
+import java.util.concurrent.CompletableFuture;
+
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
@@ -22,7 +25,8 @@ public class WebclientService {
 
     private final RestTemplate restTemplate;
 
-    public ValidationResponse executeCall(WebRequest webRequest) {
+    @Async
+    public CompletableFuture<ValidationResponse> executeCall(WebRequest webRequest) {
 
         try {
             ResponseEntity<ValidationResponse> responseEntity = restTemplate.exchange(
@@ -35,9 +39,9 @@ public class WebclientService {
                 response.setHttpStatus(responseEntity.getStatusCode());
             }
 
-            return response;
+            return CompletableFuture.completedFuture(response);
         } catch (HttpStatusCodeException ex) {
-            return getErrorResponse(ex);
+            return CompletableFuture.completedFuture(getErrorResponse(ex));
         }
     }
 

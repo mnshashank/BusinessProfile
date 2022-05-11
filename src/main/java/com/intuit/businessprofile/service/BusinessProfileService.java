@@ -21,6 +21,7 @@ import com.intuit.businessprofile.base.entity.ProductSubscriptionEntity;
 import com.intuit.businessprofile.base.entity.ProfileEntity;
 import com.intuit.businessprofile.base.entity.TaxIdentifierEntity;
 import com.intuit.businessprofile.base.pojo.Profile;
+import com.intuit.businessprofile.base.pojo.ValidationResponse;
 import com.intuit.businessprofile.base.pojo.WebRequest;
 import com.intuit.businessprofile.base.repository.JobRepository;
 import com.intuit.businessprofile.base.repository.ProfileRepository;
@@ -150,16 +151,18 @@ public class BusinessProfileService {
                 // call all subscribed products for validation (pick the subscribed products from input payload)
                 List<WebRequest> validationRequests = webRequestPreparationService.getCreateProfileValidationWebRequests(profile.getProductSubscriptions(), profile);
 
-                productsValidationService.validateWithProducts(validationRequests);
+                ValidationResponse validationResponse = productsValidationService.validateWithProducts(validationRequests);
 
-                // invalidate the redis cache
-                jedisTemplate.del(profileId.toString());
+                if (validationResponse.isValid()) {
+                    // invalidate the redis cache
+                    jedisTemplate.del(profileId.toString());
 
-                // save the profile entity
-                profileRepo.save(ProfileEntity.fromProfileAndProfileId(profile, profileId));
+                    // save the profile entity
+                    profileRepo.save(ProfileEntity.fromProfileAndProfileId(profile, profileId));
 
-                //update job table with the new status
-                jobRepo.updateJobStatus(JobStatus.SUCCESS, profileId.toString());
+                    //update job table with the new status
+                    jobRepo.updateJobStatus(JobStatus.SUCCESS, profileId.toString());
+                }
             });
 
             return profileId;
