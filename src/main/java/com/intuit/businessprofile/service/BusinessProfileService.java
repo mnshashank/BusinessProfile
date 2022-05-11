@@ -153,22 +153,26 @@ public class BusinessProfileService {
 
                 ValidationResponse validationResponse = productsValidationService.validateWithProducts(validationRequests);
 
+                JobStatus status = JobStatus.SUCCESS;
                 if (validationResponse.isValid()) {
                     // invalidate the redis cache
                     jedisTemplate.del(profileId.toString());
 
                     // save the profile entity
                     profileRepo.save(ProfileEntity.fromProfileAndProfileId(profile, profileId));
-
-                    //update job table with the new status
-                    jobRepo.updateJobStatus(JobStatus.SUCCESS, profileId.toString());
+                } else {
+                    log.error("Validation failed for profile with id: {}", profileId);
+                    status = JobStatus.FAILED;
                 }
+
+                //update job table with the new status
+                jobRepo.updateJobStatus(status, profileId.toString());
             });
 
             return profileId;
         } catch (JsonProcessingException jsonProcessingException) {
             // TODO : throw exception
-            throw new RuntimeException();
+            throw new RuntimeException(jsonProcessingException);
         }
 
     }
