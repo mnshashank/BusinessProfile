@@ -48,13 +48,19 @@ public class BusinessProfileController {
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     public ProfileResponse createProfile(@RequestBody @Valid Profile profile) {
-        return new ProfileResponse(businessProfileService.createProfile(profile), JobStatus.ACCEPTED);
+        return ProfileResponse.builder()
+                .profileId(businessProfileService.createProfile(profile))
+                .status(JobStatus.ACCEPTED)
+                .build();
     }
 
     @PutMapping(value = "/{profileId}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public ProfileResponse updateProfile(@RequestBody @Valid Profile profile, @PathVariable(name = "profileId") UUID profileId) {
         businessProfileService.updateProfile(profile, profileId);
-        return new ProfileResponse(profileId, JobStatus.ACCEPTED);
+        return ProfileResponse.builder()
+                .profileId(profileId)
+                .status(JobStatus.ACCEPTED)
+                .build();
     }
 }

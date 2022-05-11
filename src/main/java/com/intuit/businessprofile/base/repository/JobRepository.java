@@ -1,5 +1,6 @@
 package com.intuit.businessprofile.base.repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.transaction.Transactional;
@@ -17,6 +18,8 @@ public interface JobRepository extends CrudRepository<JobEntity, UUID> {
 
     @Transactional
     @Modifying
-    @Query("update JobEntity j set j.status = :status where j.profileId = :profileId")
+    @Query("update JobEntity j set j.status = :status where j.profileId = :profileId AND j.status = ACCEPTED")
     void updateJobStatus(JobStatus status, String profileId);
+
+    Optional<JobEntity> findByProfileId(String profileId);
 }
