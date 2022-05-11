@@ -11,15 +11,10 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.intuit.businessprofile.base.constant.AddressType;
 import com.intuit.businessprofile.base.constant.JobStatus;
-import com.intuit.businessprofile.base.entity.AddressEntity;
 import com.intuit.businessprofile.base.entity.JobEntity;
-import com.intuit.businessprofile.base.entity.ProductSubscriptionEntity;
 import com.intuit.businessprofile.base.entity.ProfileEntity;
-import com.intuit.businessprofile.base.entity.TaxIdentifierEntity;
+import com.intuit.businessprofile.base.exception.BusinessProfileNotFoundException;
 import com.intuit.businessprofile.base.pojo.Profile;
 import com.intuit.businessprofile.base.pojo.ValidationResponse;
 import com.intuit.businessprofile.base.pojo.WebRequest;
@@ -40,6 +35,8 @@ public class BusinessProfileService {
 
     private final JobRepository jobRepo;
 
+    private final ProfileResponseGenerator profileResponseGenerator;
+
     private final ObjectMapper mapper;
 
     private final TaskExecutor taskExecutor;
@@ -58,62 +55,11 @@ public class BusinessProfileService {
         }
 
         // get the profile information from the DB
-        // TODO: have app level runtime exception classes and use it here.
         ProfileEntity profile = profileRepo.findById(profileId)
-                .orElseThrow(RuntimeException::new);
+                .orElseThrow(() -> new BusinessProfileNotFoundException(String.format("Business profile for the given id %s not present in the database.", profileId)));
 
-        // create profile json to be stored and sent using the db fetched data
-        ObjectNode profileNode = mapper.createObjectNode();
-        profileNode.put("profileId", profileId.toString());
-        profileNode.put("companyName", profile.getCompanyName());
-        profileNode.put("companyLegalName", profile.getCompanyLegalName());
-        profileNode.put("email", profile.getEmail());
-        profileNode.put("website", profile.getWebsite());
-
-        ArrayNode businessAddresses = mapper.createArrayNode();
-        ArrayNode legalAddresses = mapper.createArrayNode();
-        for (AddressEntity address : profile.getAddresses()) {
-            ObjectNode addressNode = mapper.createObjectNode();
-            addressNode.put("id", address.getId()
-                    .toString());
-            addressNode.put("line1", address.getLine1());
-            addressNode.put("line2", address.getLine2());
-            addressNode.put("city", address.getCity());
-            addressNode.put("state", address.getState());
-            addressNode.put("zip", address.getZip());
-            addressNode.put("country", address.getCountry());
-
-            if (address.getAddressType() == AddressType.BUSINESS) {
-                businessAddresses.add(addressNode);
-            } else {
-                legalAddresses.add(addressNode);
-            }
-        }
-
-        ArrayNode subscriptions = mapper.createArrayNode();
-        for (ProductSubscriptionEntity subscription : profile.getProductSubscriptions()) {
-            ObjectNode subscriptionNode = mapper.createObjectNode();
-
-            subscriptionNode.put("productId", subscription.getProductSubscriptionCompositeKey()
-                    .getProductId());
-            subscriptionNode.put("productName", subscription.getProductName());
-
-            subscriptions.add(subscriptionNode);
-        }
-
-        ObjectNode taxIdentifiersNode = mapper.createObjectNode();
-        TaxIdentifierEntity taxIdentifierEntity = profile.getTaxIdentifier();
-        taxIdentifiersNode.put("id", taxIdentifierEntity.getId()
-                .toString());
-        taxIdentifiersNode.put("pan", taxIdentifierEntity.getPan());
-        taxIdentifiersNode.put("ein", taxIdentifierEntity.getEin());
-
-        profileNode.set("businessAddresses", businessAddresses);
-        profileNode.set("legalAddresses", legalAddresses);
-        profileNode.set("taxIdentifiers", taxIdentifiersNode);
-        profileNode.set("productSubscriptions", subscriptions);
-
-        String profileData = profileNode.toString();
+        // create profile json string to be stored and sent using the db fetched data
+        String profileData = profileResponseGenerator.getProfileResponse(profile, profileId);
 
         // populate the cache with profile data
         jedisTemplate.set(profileId.toString(), profileData, 0);
@@ -124,6 +70,8 @@ public class BusinessProfileService {
 
     public void deleteProfile(UUID profileId) {
         log.info("Deleting profile information for profileId: {}", profileId);
+
+        // delete all profile related information cascade
         profileRepo.deleteById(profileId);
 
         // delete the mapping from redis cache
