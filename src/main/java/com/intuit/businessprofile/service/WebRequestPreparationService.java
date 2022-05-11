@@ -9,8 +9,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intuit.businessprofile.base.entity.ProductSubscriptionEntity;
+import com.intuit.businessprofile.base.exception.BusinessProfileRuntimeException;
 import com.intuit.businessprofile.base.pojo.ProductSubscription;
 import com.intuit.businessprofile.base.pojo.Profile;
 import com.intuit.businessprofile.base.pojo.WebRequest;
@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class WebRequestPreparationService {
 
-    private final ObjectMapper objectMapper;
+    private static final String ERROR_STRING = "Json processing error while creating validation web requests";
 
     public List<WebRequest> getCreateProfileValidationWebRequests(List<ProductSubscription> subscriptions, Profile profile) {
         List<WebRequest> webRequests = new ArrayList<>();
@@ -32,7 +32,8 @@ public class WebRequestPreparationService {
                 webRequests.add(buildWebRequest(profile, eachSubscription.getProductId()));
             }
         } catch (JsonProcessingException jsonProcessingException) {
-            // TODO: throw exception
+            log.error(ERROR_STRING, jsonProcessingException);
+            throw new BusinessProfileRuntimeException(ERROR_STRING, jsonProcessingException);
         }
 
         return webRequests;
@@ -46,7 +47,8 @@ public class WebRequestPreparationService {
                         .getProductId()));
             }
         } catch (JsonProcessingException jsonProcessingException) {
-            // TODO: throw exception
+            log.error(ERROR_STRING, jsonProcessingException);
+            throw new BusinessProfileRuntimeException(ERROR_STRING, jsonProcessingException);
         }
 
         return webRequests;
@@ -60,8 +62,7 @@ public class WebRequestPreparationService {
                     .requestBody(profile)
                     .build();
         } else {
-            // TODO: error saying configuration is not done properly for the service
-            throw new RuntimeException();
+            throw new BusinessProfileRuntimeException(String.format("Service env not configured properly, missing product %s", productId));
         }
     }
 }

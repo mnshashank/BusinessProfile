@@ -5,6 +5,7 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.intuit.businessprofile.base.exception.BusinessProfileRuntimeException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,8 +23,7 @@ public class EnvironmentUtils {
             return objectMapper.readValue(System.getenv(envKey), new TypeReference<Map<String, String>>() {});
         } catch (JsonProcessingException jsonProcessingException) {
             log.error("Json processing exception while getting all products from environment", jsonProcessingException);
-            // TODO: change to custom exception
-            throw new RuntimeException();
+            throw new BusinessProfileRuntimeException("Json processing exception while getting all products from environment");
         }
     }
 }

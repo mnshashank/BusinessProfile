@@ -48,6 +48,7 @@ public class ProductsValidationService {
                     .error(error)
                     .build();
         } catch (Exception e) {
+            // TODO: correct exception
             throw new RuntimeException();
         }
     }

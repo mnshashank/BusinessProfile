@@ -14,6 +14,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intuit.businessprofile.base.constant.JobStatus;
 import com.intuit.businessprofile.base.entity.JobEntity;
 import com.intuit.businessprofile.base.entity.ProfileEntity;
+import com.intuit.businessprofile.base.exception.BusinessProfileBadRequestException;
+import com.intuit.businessprofile.base.exception.BusinessProfileNotAcceptableException;
 import com.intuit.businessprofile.base.exception.BusinessProfileNotFoundException;
 import com.intuit.businessprofile.base.pojo.Profile;
 import com.intuit.businessprofile.base.pojo.ValidationResponse;
@@ -30,19 +32,12 @@ import lombok.extern.slf4j.Slf4j;
 public class BusinessProfileService {
 
     private final JedisTemplate jedisTemplate;
-
     private final ProfileRepository profileRepo;
-
     private final JobRepository jobRepo;
-
     private final ProfileResponseGenerator profileResponseGenerator;
-
     private final ObjectMapper mapper;
-
     private final TaskExecutor taskExecutor;
-
     private final WebRequestPreparationService webRequestPreparationService;
-
     private final ProductsValidationService productsValidationService;
 
     public String getBusinessProfile(UUID profileId) {
@@ -82,47 +77,35 @@ public class BusinessProfileService {
     }
 
     public UUID createProfile(Profile profile) {
-        try {
-            UUID profileId = UUID.randomUUID();
+        UUID profileId = UUID.randomUUID();
 
-            log.info("Creating new profile with profileID: {}", profileId);
+        log.info("Creating new profile with profileID: {}", profileId);
 
-            // TODO: check if validation is needed while creating a new profile (eg: check company legal name)
+        // do not allow creation of profile if there is already a same company legal name in the db
+        if (profileRepo.findByCompanyLegalName(profile.getCompanyLegalName())
+                .isPresent()) {
+            throw new BusinessProfileNotAcceptableException(String.format("Cannot create profile with given company legal name: %s", profile.getCompanyLegalName()));
+        }
 
-            // create a job in T_JOB table (in case of create jobId == profileId)
-            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId, profileId);
-            jobEntity.setPayload(mapper.writeValueAsString(profile));
-            jobRepo.save(jobEntity);
+        // create a job in T_JOB table (in case of create jobId == profileId)
+        createJobInDatabase(profileId, profileId, profile);
 
-            // create a new thread for processing in background
-            taskExecutor.execute(() -> {
+        // create a new thread for processing in background
+        taskExecutor.execute(() -> {
+            JobStatus status = JobStatus.SUCCESS;
+            try {
                 // call all subscribed products for validation (pick the subscribed products from input payload)
                 List<WebRequest> validationRequests = webRequestPreparationService.getCreateProfileValidationWebRequests(profile.getProductSubscriptions(), profile);
 
-                ValidationResponse validationResponse = productsValidationService.validateWithProducts(validationRequests);
-
-                JobStatus status = JobStatus.SUCCESS;
-                if (validationResponse.isValid()) {
-                    // invalidate the redis cache
-                    jedisTemplate.del(profileId.toString());
-
-                    // save the profile entity
-                    profileRepo.save(ProfileEntity.fromProfileAndProfileId(profile, profileId));
-                } else {
-                    log.error("Validation failed for profile with id: {}", profileId);
-                    status = JobStatus.FAILED;
-                }
-
-                //update job table with the new status
-                jobRepo.updateJobStatus(status, profileId.toString());
-            });
-
-            return profileId;
-        } catch (JsonProcessingException jsonProcessingException) {
-            // TODO : throw exception
-            throw new RuntimeException(jsonProcessingException);
-        }
-
+                status = performCreateValidation(profile, profileId, status, validationRequests);
+            } catch (Exception exception) {
+                log.error("Exception occurred while validating the profile in a separate thread for profileId: {}", profileId);
+                status = JobStatus.FAILED;
+            }
+            //update job table with the new status
+            jobRepo.updateJobStatus(status, profileId.toString());
+        });
+        return profileId;
     }
 
     @Transactional
@@ -130,39 +113,75 @@ public class BusinessProfileService {
         log.info("Updating profile with profileID: {}", profileId);
 
         // TODO: check if there is already an on-going job for the profile
-        try {
-            UUID jobId = UUID.randomUUID();
-            // check and fetch the profile from database
-            // TODO: have app level runtime exception classes and use it here.
-            ProfileEntity profileEntity = profileRepo.findById(profileId)
-                    .orElseThrow(RuntimeException::new);
 
-            // create a job for update in T_Job table
-            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId, jobId);
+        UUID jobId = UUID.randomUUID();
+        // check and fetch the profile from database
+        ProfileEntity profileEntity = profileRepo.findById(profileId)
+                .orElseThrow(() -> new BusinessProfileNotFoundException(String.format("Could not find entry for profileId: %s", profileId)));
+
+        // create a job for update in T_Job table
+        createJobInDatabase(profileId, jobId, profile);
+
+        // create a background thread for processing
+        taskExecutor.execute(() -> {
+            JobStatus status = JobStatus.SUCCESS;
+            try {
+                // call all subscribed products for validation (pick the subscribed products from database)
+                List<WebRequest> validationRequests = webRequestPreparationService.getUpdateProfileValidationWebRequests(profileEntity.getProductSubscriptions(), profile);
+
+                status = performUpdateValidation(profileEntity, profile, profileId, status, validationRequests);
+            } catch (Exception exception) {
+                log.error("Exception occurred while validating the profile in a separate thread for profileId: {}", profileId);
+                status = JobStatus.FAILED;
+            }
+            //update job table with the new status
+            jobRepo.updateJobStatus(status, profileId.toString());
+        });
+        return jobId;
+    }
+
+    private JobStatus performUpdateValidation(ProfileEntity profileEntity, Profile profile, UUID profileId, JobStatus status, List<WebRequest> validationRequests) {
+        ValidationResponse validationResponse = productsValidationService.validateWithProducts(validationRequests);
+
+        if (validationResponse.isValid()) {
+            // update the profile entity
+            ProfileEntity.updateProfile(profileEntity, profile);
+
+            // invalidate the redis cache
+            jedisTemplate.del(profileId.toString());
+
+            // save the updated profile entity
+            profileRepo.save(profileEntity);
+        } else {
+            log.error("Validation failed while updating for profile with id: {}", profileId);
+            status = JobStatus.FAILED;
+        }
+        return status;
+    }
+
+    private JobStatus performCreateValidation(Profile profile, UUID profileId, JobStatus status, List<WebRequest> validationRequests) {
+        ValidationResponse validationResponse = productsValidationService.validateWithProducts(validationRequests);
+
+        if (validationResponse.isValid()) {
+            // invalidate the redis cache
+            jedisTemplate.del(profileId.toString());
+
+            // save the profile entity
+            profileRepo.save(ProfileEntity.fromProfileAndProfileId(profile, profileId));
+        } else {
+            log.error("Validation failed while creating for profile with id: {}", profileId);
+            status = JobStatus.FAILED;
+        }
+        return status;
+    }
+
+    private void createJobInDatabase(UUID profileId, UUID jobId, Profile profile) {
+        try {
+            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId, profileId);
             jobEntity.setPayload(mapper.writeValueAsString(profile));
             jobRepo.save(jobEntity);
-
-            // create a background thread for processing
-            taskExecutor.execute(() -> {
-                // call all subscribed products for validation (pick the subscribed products from database)
-
-                // update the profile entity
-                ProfileEntity.updateProfile(profileEntity, profile);
-
-                // invalidate the redis cache
-                jedisTemplate.del(profileId.toString());
-
-                // save the updated profile entity
-                profileRepo.save(profileEntity);
-
-                //update job table with the new status
-                jobRepo.updateJobStatus(JobStatus.SUCCESS, profileId.toString());
-            });
-
-            return jobId;
         } catch (JsonProcessingException jsonProcessingException) {
-            // TODO : throw exception
-            throw new RuntimeException();
+            throw new BusinessProfileBadRequestException("Error while parsing the request body");
         }
     }
 

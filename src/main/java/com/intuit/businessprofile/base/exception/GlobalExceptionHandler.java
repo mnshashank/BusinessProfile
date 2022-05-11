@@ -17,4 +17,11 @@ public class GlobalExceptionHandler {
                 .body(businessProfileNotFoundException.getMessage());
     }
 
+    @ExceptionHandler(BusinessProfileBadRequestException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<Object> handleBadRequestException(BusinessProfileBadRequestException businessProfileBadRequestException, WebRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(businessProfileBadRequestException.getMessage());
+    }
+
 }

@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import com.intuit.businessprofile.base.entity.JobEntity;
+import com.intuit.businessprofile.base.exception.BusinessProfileNotFoundException;
 import com.intuit.businessprofile.base.pojo.ProfileResponse;
 import com.intuit.businessprofile.base.repository.JobRepository;
 
@@ -19,12 +20,11 @@ public class JobPollService {
     private final JobRepository jobRepo;
 
     public ProfileResponse pollProfileUpdateStatus(UUID jobId) {
-        log.info("Polling profile update / creation status for jobId: {}", jobId);
+        log.info("Polling profile update or creation status for jobId: {}", jobId);
 
         // get the status information from the Job repo
-        // TODO: have app level runtime exception classes and use it here.
         JobEntity job = jobRepo.findById(jobId)
-                .orElseThrow(RuntimeException::new);
+                .orElseThrow(() -> new BusinessProfileNotFoundException(String.format("Job %s not found in the database", jobId)));
 
         return ProfileResponse.builder()
                 .status(job.getStatus())
