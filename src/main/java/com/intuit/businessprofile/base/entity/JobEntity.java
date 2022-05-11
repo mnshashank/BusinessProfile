@@ -59,10 +59,10 @@ public class JobEntity {
     @Column(name = "ERROR")
     private String error;
 
-    public static JobEntity getInstanceFromProfileId(UUID profileId) {
+    public static JobEntity getInstanceFromProfileId(UUID profileId, UUID jobId) {
         JobEntity jobEntity = new JobEntity();
 
-        jobEntity.setId(UUID.randomUUID());
+        jobEntity.setId(jobId);
         jobEntity.setCorrelationId(UUID.randomUUID());
         jobEntity.setProfileId(profileId.toString());
         jobEntity.setStatus(JobStatus.ACCEPTED);

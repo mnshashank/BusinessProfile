@@ -139,8 +139,8 @@ public class BusinessProfileService {
 
             // TODO: check if validation is needed while creating a new profile (eg: check company legal name)
 
-            // create a job in T_JOB table
-            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId);
+            // create a job in T_JOB table (in case of create jobId == profileId)
+            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId, profileId);
             jobEntity.setPayload(mapper.writeValueAsString(profile));
             jobRepo.save(jobEntity);
 
@@ -170,18 +170,19 @@ public class BusinessProfileService {
     }
 
     @Transactional
-    public void updateProfile(Profile profile, UUID profileId) {
+    public UUID updateProfile(Profile profile, UUID profileId) {
         log.info("Updating profile with profileID: {}", profileId);
 
         // TODO: check if there is already an on-going job for the profile
         try {
+            UUID jobId = UUID.randomUUID();
             // check and fetch the profile from database
             // TODO: have app level runtime exception classes and use it here.
             ProfileEntity profileEntity = profileRepo.findById(profileId)
                     .orElseThrow(RuntimeException::new);
 
             // create a job for update in T_Job table
-            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId);
+            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId, jobId);
             jobEntity.setPayload(mapper.writeValueAsString(profile));
             jobRepo.save(jobEntity);
 
@@ -201,6 +202,8 @@ public class BusinessProfileService {
                 //update job table with the new status
                 jobRepo.updateJobStatus(JobStatus.SUCCESS, profileId.toString());
             });
+
+            return jobId;
         } catch (JsonProcessingException jsonProcessingException) {
             // TODO : throw exception
             throw new RuntimeException();

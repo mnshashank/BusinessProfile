@@ -19,12 +19,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JobPollController {
 
-    static final String POLL_BASE_URL = "/bp/v1/profiles/";
+    static final String POLL_BASE_URL = "/bp/v1/jobs/";
 
     private final JobPollService jobPollService;
 
-    @GetMapping(value = "/{profileId}/status", produces = "application/json")
-    public ProfileResponse pollUpdateProfile(@PathVariable(name = "profileId") UUID profileId) {
-        return jobPollService.pollProfileUpdateStatus(profileId);
+    @GetMapping(value = "/{jobId}/status", produces = "application/json")
+    public ProfileResponse pollUpdateProfile(@PathVariable(name = "jobId") UUID jobId) {
+        return jobPollService.pollProfileUpdateStatus(jobId);
     }
 }

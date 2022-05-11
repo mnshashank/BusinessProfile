@@ -18,17 +18,17 @@ public class JobPollService {
 
     private final JobRepository jobRepo;
 
-    public ProfileResponse pollProfileUpdateStatus(UUID profileId) {
-        log.info("Polling profile update status for profileId: {}", profileId);
+    public ProfileResponse pollProfileUpdateStatus(UUID jobId) {
+        log.info("Polling profile update / creation status for jobId: {}", jobId);
 
         // get the status information from the Job repo
         // TODO: have app level runtime exception classes and use it here.
-        JobEntity job = jobRepo.findByProfileId(profileId.toString())
+        JobEntity job = jobRepo.findById(jobId)
                 .orElseThrow(RuntimeException::new);
 
         return ProfileResponse.builder()
                 .status(job.getStatus())
-                .profileId(profileId)
+                .jobId(jobId)
                 .correlationId(job.getCorrelationId())
                 .error(job.getError())
                 .build();

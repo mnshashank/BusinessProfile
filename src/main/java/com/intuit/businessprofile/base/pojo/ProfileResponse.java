@@ -14,6 +14,8 @@ import lombok.Data;
 @JsonInclude(Include.NON_NULL)
 public class ProfileResponse {
 
+    private UUID jobId;
+
     private UUID profileId;
 
     private JobStatus status;
