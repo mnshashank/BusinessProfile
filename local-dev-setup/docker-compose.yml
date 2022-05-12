@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+
+  ### postgress for db connection ###
+  postgres:
+    container_name: pg_container
+    restart: always
+    image: postgres:13.6-alpine
+    environment:
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_PASSWORD=root"
+      - "POSTGRES_HOST=localhost"
+      - "POSTGRES_PORT=5432"
+    ports:
+      - "5432:5432"
+    volumes:
+      - business_profile:/var/business_profile/data
+    networks:
+      - bp
+
+
+  ### pgadmin for web-based GUI tool used to interact with the Postgres database sessions ###
+  pgadmin:
+    container_name: pgadmin4_container
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - "5050:80"
+    networks:
+      - bp
+
+  ### redis to cache business profile data for GET scenarios
+  redis:
+    image: redis:7.0.0
+    container_name: "redis"
+    ports:
+      - 6379:6379
+    networks:
+      - bp
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: "redis-insight"
+    ports:
+      - 8001:8001
+    networks:
+      - bp
+
+volumes:
+  business_profile:
+
+networks:
+  bp:
+    driver: bridge
