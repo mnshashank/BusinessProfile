@@ -18,6 +18,7 @@ import javax.persistence.Table;
 import org.hibernate.annotations.Type;
 
 import com.intuit.businessprofile.base.constant.AddressType;
+import com.intuit.businessprofile.base.exception.BusinessProfileRuntimeException;
 import com.intuit.businessprofile.base.pojo.Address;
 import com.intuit.businessprofile.base.pojo.Profile;
 
@@ -62,7 +63,6 @@ public class AddressEntity {
     private ProfileEntity profile;
 
     public static List<AddressEntity> fromProfileAndProfileEntity(Profile profile, ProfileEntity profileEntity) {
-        // TODO: check and refactor this method
         List<AddressEntity> addressEntities = new ArrayList<>();
 
         for (Address businessAddress : profile.getBusinessAddresses()) {
@@ -102,12 +102,11 @@ public class AddressEntity {
         addressList.addAll(profile.getLegalAddresses());
 
         for (AddressEntity addressEntity : profileEntity.getAddresses()) {
-            // TODO: throw created custom application exception
             Address address = addressList.stream()
                     .filter(addr -> addr.getId()
                             .equals(addressEntity.getId()))
                     .findFirst()
-                    .orElseThrow(RuntimeException::new);
+                    .orElseThrow(() -> new BusinessProfileRuntimeException("Address not present in the database"));
 
             addressEntity.setLine1(address.getLine1());
             addressEntity.setLine2(address.getLine2());

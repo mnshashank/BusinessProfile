@@ -26,5 +26,5 @@ public interface JobRepository extends CrudRepository<JobEntity, UUID> {
     @Query("delete from JobEntity j where j.profileId = :profileId")
     void deleteAllJobsForProfile(String profileId);
 
-    Optional<JobRepository> findByProfileIdAndStatus(String profileId, JobStatus status);
+    Optional<JobEntity> findByProfileIdAndStatus(String profileId, JobStatus status);
 }

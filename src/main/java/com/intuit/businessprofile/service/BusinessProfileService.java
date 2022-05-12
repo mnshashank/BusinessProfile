@@ -5,8 +5,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
-import javax.transaction.Transactional;
-
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 
@@ -109,7 +107,6 @@ public class BusinessProfileService {
         return profileId;
     }
 
-    @Transactional
     public UUID updateProfile(Profile profile, UUID profileId) {
         log.info("Updating profile with profileID: {}", profileId);
 
@@ -182,7 +179,7 @@ public class BusinessProfileService {
 
     private void createJobInDatabase(UUID profileId, UUID jobId, Profile profile) {
         try {
-            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId, profileId);
+            JobEntity jobEntity = JobEntity.getInstanceFromProfileId(profileId, jobId);
             jobEntity.setPayload(mapper.writeValueAsString(profile));
             jobRepo.save(jobEntity);
         } catch (JsonProcessingException jsonProcessingException) {
