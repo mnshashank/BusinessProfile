@@ -42,9 +42,6 @@ public class RetryValidationWebclientService {
             }
 
             return CompletableFuture.completedFuture(response);
-        } catch (HttpStatusCodeException ex) {
-            // throw ex;
-            return CompletableFuture.completedFuture(getErrorResponse(ex));
         } catch (RestClientException restClientException) {
             return CompletableFuture.completedFuture(getErrorResponse(restClientException));
         }

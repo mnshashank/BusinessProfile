@@ -1,5 +1,6 @@
 package com.intuit.businessprofile.base.repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.transaction.Transactional;
@@ -24,4 +25,6 @@ public interface JobRepository extends CrudRepository<JobEntity, UUID> {
     @Modifying
     @Query("delete from JobEntity j where j.profileId = :profileId")
     void deleteAllJobsForProfile(String profileId);
+
+    Optional<JobRepository> findByProfileIdAndStatus(String profileId, JobStatus status);
 }

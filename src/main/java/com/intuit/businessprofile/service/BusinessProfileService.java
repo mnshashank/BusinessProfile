@@ -3,6 +3,7 @@ package com.intuit.businessprofile.service;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 import javax.transaction.Transactional;
 
@@ -112,7 +113,10 @@ public class BusinessProfileService {
     public UUID updateProfile(Profile profile, UUID profileId) {
         log.info("Updating profile with profileID: {}", profileId);
 
-        // TODO: check if there is already an on-going job for the profile
+        if (jobRepo.findByProfileIdAndStatus(profileId.toString(), JobStatus.ACCEPTED)
+                .isPresent()) {
+            throw new BusinessProfileNotAcceptableException("Previous update operation is still in progress, please try in a moment");
+        }
 
         UUID jobId = UUID.randomUUID();
         // check and fetch the profile from database
@@ -131,7 +135,7 @@ public class BusinessProfileService {
 
                 status = performUpdateValidation(profileEntity, profile, profileId, status, validationRequests);
             } catch (Exception exception) {
-                log.error("Exception occurred while validating the profile in a separate thread for profileId: {}", profileId);
+                log.error("Exception occurred while validating the profile in a separate thread for profileId: {}", profileId, exception);
                 status = JobStatus.FAILED;
             }
             //update job table with the new status
@@ -140,7 +144,8 @@ public class BusinessProfileService {
         return jobId;
     }
 
-    private JobStatus performUpdateValidation(ProfileEntity profileEntity, Profile profile, UUID profileId, JobStatus status, List<WebRequest> validationRequests) {
+    private JobStatus performUpdateValidation(ProfileEntity profileEntity, Profile profile, UUID profileId, JobStatus status, List<WebRequest> validationRequests)
+            throws ExecutionException, InterruptedException {
         ValidationResponse validationResponse = productsValidationService.validateWithProducts(validationRequests);
 
         if (validationResponse.isValid()) {
@@ -153,13 +158,13 @@ public class BusinessProfileService {
             // save the updated profile entity
             profileRepo.save(profileEntity);
         } else {
-            log.error("Validation failed while updating for profile with id: {}", profileId);
+            log.error("Validation failed while updating for profile with id: {} and error: {}", profileId, validationResponse.getError());
             status = JobStatus.FAILED;
         }
         return status;
     }
 
-    private JobStatus performCreateValidation(Profile profile, UUID profileId, JobStatus status, List<WebRequest> validationRequests) {
+    private JobStatus performCreateValidation(Profile profile, UUID profileId, JobStatus status, List<WebRequest> validationRequests) throws ExecutionException, InterruptedException {
         ValidationResponse validationResponse = productsValidationService.validateWithProducts(validationRequests);
 
         if (validationResponse.isValid()) {
